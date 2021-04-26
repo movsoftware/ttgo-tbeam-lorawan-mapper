@@ -424,6 +424,10 @@ void loop() {
 
   if (packetSent) {
     packetSent = false;
+#ifdef ALWAYS_JOIN
+    screen_print("Joining LoRA\n");
+    ttn_join();
+#endif
     sleep();
   }
 
@@ -467,7 +471,6 @@ void loop() {
   static uint32_t last = 0;
   static bool first = true;
   if (0 == last || millis() - last > SEND_INTERVAL) {
-
     if (auto_transmit && hasValidGPSPosition()) {
       buildPacket(txBuffer, false);
       lmic_tx_error_t err = trySend(txBuffer, sizeof(txBuffer));
