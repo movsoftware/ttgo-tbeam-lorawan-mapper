@@ -1,19 +1,14 @@
-## TTGO T-Beam Tracker for The Things Network
+## TTGO T-Beam Tracker for LoRaWAN Systems
 
-Current version: 1.2.1
+Current version: 0.0.8
 
-Uploads GPS data from the TTGO T-Beam to [The Things Network](https://www.thethingsnetwork.org) (TTN) and [TTN Mapper](https://ttnmapper.org) for tracking and determining signal strength of LoRaWAN gateways and nodes.
+Uploads GPS data from the TTGO T-Beam to any LoRaWAN compatible system for tracking and determining signal strength of LoRaWAN gateways and nodes.
 
-#### Based on the code from [xoseperez/ttgo-beam-tracker](https://github.com/xoseperez/ttgo-beam-tracker), with excerpts from [dermatthias/Lora-TTNMapper-T-Beam](https://github.com/dermatthias/Lora-TTNMapper-T-Beam) to fix an issue with incorrect GPS data being transmitted to The Things Network. I also added support for the 915 MHz frequency (North and South America). [lewisxhe/TTGO-T-Beam](https://github.com/lewisxhe/TTGO-T-Beam) was referenced for enabling use on the newer T-Beam board (Rev1).
-
-This is a LoRaWAN node based on the [TTGO T-Beam](https://github.com/LilyGO/TTGO-T-Beam) development platform using the SSD1306 I2C OLED display.
-It uses a RFM95 by HopeRF and the MCCI LoRaWAN LMIC stack. This sample code is configured to connect to The Things Network using the US 915 MHz frequency by default, but can be changed to EU 868 MHz.
-
-NOTE: There are now 2 versions of the TTGO T-BEAM, the first version (Rev0) and a newer version (Rev1). The GPS module on Rev1 is connected to different pins than Rev0. This code has been successfully tested on REV0, and is in the process of being tested on REV1. See the end of this README for photos of eah board.
+#### Based on the code from [kizniche/ttgo-tbeam-ttn-tracker](https://github.com/kizniche/ttgo-tbeam-ttn-tracker)
 
 ### Setup
 
-1. Follow the directions at [espressif/arduino-esp32](https://github.com/espressif/arduino-esp32) to install the board to the Arduino IDE and use board 'T-Beam'.
+1. Install Visual Studio Code and Platform IO.
 
 2. Install the Arduino IDE libraries:
 
@@ -28,51 +23,36 @@ NOTE: There are now 2 versions of the TTGO T-BEAM, the first version (Rev0) and 
 
 5. Edit this project file ```main/credentials.h``` to use either ```USE_ABP``` or ```USE_OTAA``` and add the Keys/EUIs for your Application's Device from The Things Network.
 
-6. Add the TTN Mapper integration to your Application (and optionally the Data Storage integration if you want to access the GPS location information yourself or use [TTN Tracker](#ttn-tracker), then add the Decoder code:
+6. Add the Decoder function to your LoRaWAN system:
 
 ```C
 function Decoder(bytes, port) {
-    var decoded = {};
+ var decoded = {};
+ decoded.type = "position";
+ decoded.inTrip = true;
+ decoded.fixFailed = false;
+ decoded.accuracy = 10;
+ decoded.heading = 0.0;
+ decoded.speedKmph = 0.0;
+ decoded.batV = 0.0;
+ decoded.manDown = null;
+ decoded.latitude = ((bytes[0]<<16)>>>0) + ((bytes[1]<<8)>>>0) + bytes[2];
+ decoded.latitude = (decoded.latitude / 16777215.0 * 180) - 90;
+ decoded.longitude = ((bytes[3]<<16)>>>0) + ((bytes[4]<<8)>>>0) + bytes[5];
+ decoded.longitude = (decoded.longitude / 16777215.0 * 360) - 180;
 
-    decoded.latitude = ((bytes[0]<<16)>>>0) + ((bytes[1]<<8)>>>0) + bytes[2];
-    decoded.latitude = (decoded.latitude / 16777215.0 * 180) - 90;
+ var altValue = ((bytes[6]<<8)>>>0) + bytes[7];
+ var sign = bytes[6] & (1 << 7);
+ if(sign) decoded.altitude = 0xFFFF0000 | altValue;
+ else decoded.altitude = altValue;
 
-    decoded.longitude = ((bytes[3]<<16)>>>0) + ((bytes[4]<<8)>>>0) + bytes[5];
-    decoded.longitude = (decoded.longitude / 16777215.0 * 360) - 180;
-
-    var altValue = ((bytes[6]<<8)>>>0) + bytes[7];
-    var sign = bytes[6] & (1 << 7);
-    if(sign) decoded.altitude = 0xFFFF0000 | altValue;
-    else decoded.altitude = altValue;
-
-    decoded.hdop = bytes[8] / 10.0;
-    decoded.sats = bytes[9];
-
-    return decoded;
+ decoded.hdop = bytes[8] / 10.0;
+ decoded.sats = bytes[9];
+ decoded.ext = bytes[10];
+ return decoded;
 }
 ```
 
-7. Open this project file ```main/main.ino``` with the Arduino IDE and upload it to your TTGO T-Beam.
+7. Build and upload the project to your TTGO T-Beam.
 
-8. Turn on the device and once a GPS lock is acquired, the device will start sending data to TTN and TTN Mapper.
-
-
-### TTN Tracker
-
-I also developed [The Things Network Tracker (TTN-Tracker)](https://github.com/kizniche/ttn-tracker), a web app that pulls GPS data from TTN and displays it on a map in real-time (TTN Mapper is not real-time) that can be displayed on your phone, tablet, or computer. This is handy for testing signal range while driving, as you can see location points appearing under your moving location dot on the map (if you grant location sharing permissions to the web app) when a successful transmission has been achieved.
-
-### T-BEAM Board Versions
-
-#### Rev0
-
-![TTGO T-Beam 01](img/TTGO-TBeam-01.jpg)
-
-![TTGO T-Beam 02](img/TTGO-TBeam-02.jpg)
-
-![TTGO T-Beam 03](img/TTGO-TBeam-03.jpg)
-
-#### Rev1
-
-![T-BEAM-Rev1-01](img/T-BEAM-Rev1-01.jpg)
-
-![T-BEAM-Rev1-02](img/T-BEAM-Rev1-02.jpg)
+8. Turn on the device and once a GPS lock is acquired, the device will start sending data to the LoraWAN system.
