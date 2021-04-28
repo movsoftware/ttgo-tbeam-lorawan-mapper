@@ -187,15 +187,15 @@ void sleep() {
 
 
 void callback(uint8_t message) {
-
   if (EV_JOINED == message) {
+    screen_print("Joined LoRA.\n");
     lora_joined = true;
-    screen_print("Joined LoRA!\n");
-    transmitLoraFailures();
   }
-  else if (EV_JOINING == message) {
+  if (EV_JOINING == message) {
     if (lora_joined) {
       screen_print("LoRA joining...\n");
+    } else {
+      lora_joined = true;
     }
   }
   else if (EV_JOIN_FAILED == message) {lora_joined = false;screen_print("LoRA join failed\n");onLoraFailure();}
@@ -220,7 +220,8 @@ void callback(uint8_t message) {
   }
 
   if (EV_RESPONSE == message) {
-    screen_print("[TTN] Response: ");
+    screen_print("LoRA Response\n");
+    /*
     size_t len = ttn_response_len();
     uint8_t data[len];
     ttn_response(data, len);
@@ -229,7 +230,7 @@ void callback(uint8_t message) {
       snprintf(buffer, sizeof(buffer), "%02X", data[i]);
       screen_print(buffer);
     }
-    screen_print("\n");
+    screen_print("\n");*/
   }
 }
 
@@ -424,7 +425,7 @@ void loop() {
   if (packetSent) {
     packetSent = false;
 #ifdef ALWAYS_JOIN
-    screen_print("Joining LoRA\n");
+    screen_print("Joining LoRA...\n");
     lora_joined = false;
     ttn_join();
 #endif
