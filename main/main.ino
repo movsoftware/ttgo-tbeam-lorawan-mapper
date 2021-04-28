@@ -34,6 +34,7 @@ String baChStatus = "No charging";
 bool ssd1306_found = false;
 bool axp192_found = false;
 bool auto_transmit = true;
+bool lora_joined = false;
 bool packetSent, packetQueued;
 
 #if defined(PAYLOAD_USE_FULL)
@@ -68,7 +69,7 @@ void buildPacket(uint8_t txBuffer[], bool isfailure); // needed for platformio
 void onLoraFailure() {
   int ll = failurePtList.size();
   char buffer[40];
-  snprintf(buffer, sizeof(buffer), "ADDING %d FAILURES\n", ll);
+  snprintf(buffer, sizeof(buffer), "ADDING %d FAILURES\n", ll+1);
   screen_print(buffer);
   if (ll >= 100) {
     failurePtList.pop();
@@ -187,22 +188,21 @@ void sleep() {
 
 void callback(uint8_t message) {
 
-  bool ttn_joined = false;
   if (EV_JOINED == message) {
-    ttn_joined = true;
+    lora_joined = true;
     screen_print("Joined LoRA!\n");
     transmitLoraFailures();
   }
   else if (EV_JOINING == message) {
-    if (ttn_joined) {
+    if (lora_joined) {
       screen_print("LoRA joining...\n");
     }
   }
-  else if (EV_JOIN_FAILED == message) {screen_print("LoRA join failed\n");onLoraFailure();}
-  else if (EV_REJOIN_FAILED == message) {screen_print("LoRA rejoin failed\n");onLoraFailure();}
-  else if (EV_LOST_TSYNC == message) {screen_print("LoRA lost tsync\n");}
-  else if (EV_RESET == message) {screen_print("Reset LoRA connection\n");}
-  else if (EV_LINK_DEAD == message) {screen_print("LoRA link dead\n");onLoraFailure();}
+  else if (EV_JOIN_FAILED == message) {lora_joined = false;screen_print("LoRA join failed\n");onLoraFailure();}
+  else if (EV_REJOIN_FAILED == message) {lora_joined = false;screen_print("LoRA rejoin failed\n");onLoraFailure();}
+  else if (EV_LOST_TSYNC == message) {lora_joined = false;screen_print("LoRA lost tsync\n");}
+  else if (EV_RESET == message) {lora_joined = false;screen_print("Reset LoRA connection\n");}
+  else if (EV_LINK_DEAD == message) {lora_joined = false;screen_print("LoRA link dead\n");onLoraFailure();}
   else if (EV_ACK == message) {screen_print("ACK received\n");}
   else if (EV_PENDING == message) {screen_print("Message discarded\n");}
   else if (EV_QUEUED == message) {screen_print("Message queued\n");}
@@ -220,13 +220,10 @@ void callback(uint8_t message) {
   }
 
   if (EV_RESPONSE == message) {
-
     screen_print("[TTN] Response: ");
-
     size_t len = ttn_response_len();
     uint8_t data[len];
     ttn_response(data, len);
-
     char buffer[6];
     for (uint8_t i = 0; i < len; i++) {
       snprintf(buffer, sizeof(buffer), "%02X", data[i]);
@@ -411,6 +408,8 @@ void setup() {
   }
   else {
     ttn_register(callback);
+    lora_joined = false;
+    screen_print("Joining LoRA\n");
     ttn_join();
     ttn_adr(LORAWAN_ADR);
   }
@@ -426,6 +425,7 @@ void loop() {
     packetSent = false;
 #ifdef ALWAYS_JOIN
     screen_print("Joining LoRA\n");
+    lora_joined = false;
     ttn_join();
 #endif
     sleep();
@@ -452,6 +452,9 @@ void loop() {
         screen_print("AUTO TX ON\n");
       }
     } else {
+      if (lora_joined == false) {
+        screen_print("NO LORA. Not sending.\n");
+      } else {
       if (hasValidGPSPosition()) {
         screen_print("Sending packet now\n");
         buildPacket(txBuffer, false);
@@ -464,6 +467,7 @@ void loop() {
       } else {
         screen_print("NO GPS. Not sending.\n");
       }
+      }
     }
   }
 
@@ -471,7 +475,9 @@ void loop() {
   static uint32_t last = 0;
   static bool first = true;
   if (0 == last || millis() - last > SEND_INTERVAL) {
-    if (auto_transmit && hasValidGPSPosition()) {
+    bool validGPS = hasValidGPSPosition();
+
+    if (lora_joined && auto_transmit && validGPS) {
       buildPacket(txBuffer, false);
       lmic_tx_error_t err = trySend(txBuffer, sizeof(txBuffer));
 
