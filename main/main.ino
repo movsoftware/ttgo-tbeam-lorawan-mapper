@@ -195,7 +195,7 @@ void callback(uint8_t message) {
     if (lora_joined) {
       screen_print("LoRA joining...\n");
     } else {
-      lora_joined = true;
+      //lora_joined = true;
     }
   }
   else if (EV_JOIN_FAILED == message) {lora_joined = false;screen_print("LoRA join failed\n");onLoraFailure();}
@@ -433,18 +433,25 @@ void loop() {
   }
 
   // if user presses button for more than 3 secs toggle to auto transmit
+  // if the user presses button for more than 8 seconds do a rejoin
   static bool wasPressed = false;
-  static uint32_t minPressMs; // what tick should we call this press long enough
+  static uint32_t autoTransmitMinPressMs; 
+  static uint32_t rejoinMinPressMs; 
   if (!digitalRead(BUTTON_PIN)) {
     if (!wasPressed) { // just started a new press
       wasPressed = true;
-      minPressMs = millis() + 3000;
+      autoTransmitMinPressMs = millis() + 3000;
+      rejoinMinPressMs = millis() + 8000;
     } 
   } else if (wasPressed) {
     // we just did a release
     wasPressed = false;
-    if(millis() > minPressMs) {
-      // held long enough
+    // held long enough for join
+    if (millis() > rejoinMinPressMs) {
+      screen_print("ATTEMPTING JOIN\n");
+      ttn_join();
+    } else if (millis() > autoTransmitMinPressMs) {
+      // held long enough for auto transmit toggle
       if (auto_transmit == true) {
         auto_transmit = false;
         screen_print("AUTO TX OFF\n");
@@ -505,7 +512,7 @@ void loop() {
 
       // No GPS lock yet, let the OS put the main CPU in low power mode for 100ms (or until another interrupt comes in)
       // i.e. don't just keep spinning in loop as fast as we can.
-      delay(100);
+      //delay(100);
     }
   }
 }

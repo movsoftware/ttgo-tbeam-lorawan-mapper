@@ -341,7 +341,7 @@ void ttn_join() {
         // channels; ensure it uses the one we want
         LMIC.txChnl = SINGLE_CHANNEL_GATEWAY;
         #endif
-
+/*
         Preferences p;
         bool cleared = p.clear();
 
@@ -357,8 +357,7 @@ void ttn_join() {
         bool keysgood = p.getBytes("nwkKey", nwkKey, sizeof(nwkKey)) == sizeof(nwkKey) && 
                         p.getBytes("artKey", artKey, sizeof(artKey)) == sizeof(artKey);
         p.end(); // close our prefs
-
-keysgood = false;
+        keysgood = false; // force it yo always start from scratch
         if(!keysgood) {
             // We have not yet joined a network, start a full join attempt
             // Make LMiC initialize the default channels, choose a channel, and
@@ -373,7 +372,7 @@ keysgood = false;
             // Trigger a false joined
             _ttn_callback(EV_JOINED);
         }
-
+*/
     #endif
 }
 

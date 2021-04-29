@@ -78,15 +78,15 @@ void gps_setup() {
 
 static void gps_loop() {
 
-    int avail = _serial_gps.available();
     //sprintf(t, "%s", "GPS BEGIN");
     //Serial.println(t);
-    while (avail) {
+    while (_serial_gps.available()) {
         int r = _serial_gps.read();
         //sprintf(t, "%c", r);
         //Serial.print(t);
-        _gps->encode(r);
-        avail = _serial_gps.available();
+        if (_gps->encode(r)) {
+            break;
+        }
     }
    // sprintf(t, "%s", "GPS END");
     //Serial.println(t);
