@@ -67,6 +67,11 @@ SecuredLinkedList<failurePt> failurePtList = SecuredLinkedList<failurePt>();
 void buildPacket(uint8_t txBuffer[], bool isfailure); // needed for platformio
 
 void onLoraFailure() {
+
+  if (hasValidGPSPosition() == false) {
+    screen_print("NO GPS\nNOT ADDING FAILURE\n");
+    return;
+  }
   int ll = failurePtList.size();
   char buffer[40];
   snprintf(buffer, sizeof(buffer), "ADDING %d FAILURES\n", ll+1);
@@ -82,6 +87,10 @@ void onLoraFailure() {
 void transmitLoraFailures() {
 
   int size = failurePtList.size();
+
+  if (size == 0) {
+    return;
+  }
   char buffer[40];
   snprintf(buffer, sizeof(buffer), "TXMIT %d FAILURES\n", size);
   screen_print(buffer);
@@ -189,6 +198,7 @@ void sleep() {
 void callback(uint8_t message) {
   if (EV_JOINED == message) {
     screen_print("Joined LoRA.\n");
+    transmitLoraFailures()
     lora_joined = true;
   }
   if (EV_JOINING == message) {
@@ -217,6 +227,7 @@ void callback(uint8_t message) {
     screen_print("Message sent\n");
     packetQueued = false;
     packetSent = true;
+    transmitLoraFailures();
   }
 
   if (EV_RESPONSE == message) {
